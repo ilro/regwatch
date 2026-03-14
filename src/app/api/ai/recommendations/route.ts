@@ -1,10 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { aiRecommendationsRequestSchema } from "@/lib/validation/ai-recommendations.schema";
+import { z } from "zod";
 
 function getOpenAI() {
   return new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
+}
+
+// Simple in-memory rate limiting (in production, use Redis or similar)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per window
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+  
+  if (!record) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  
+  if (now > record.resetTime) {
+    // Reset the window
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+  
+  // Increment count
+  record.count++;
+  rateLimitMap.set(ip, record);
+  return true;
 }
 
 const SYSTEM_PROMPT = `You are an expert in Australian business compliance regulations. 
@@ -25,9 +57,28 @@ Consider:
 - Council permits and approvals`;
 
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
-    const { businessType, state, industry, existingItems } = body;
+    
+    // Input validation
+    const validationResult = aiRecommendationsRequestSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: validationResult.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { businessType, state, industry, existingItems } = validationResult.data;
 
     const existingTitles = (existingItems ?? []).map((i: { title: string }) => i.title).join(", ");
 

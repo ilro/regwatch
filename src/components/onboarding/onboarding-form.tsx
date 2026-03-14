@@ -61,145 +61,181 @@ export function OnboardingForm() {
     return state !== "" && industry !== "";
   }
 
-  async function handleGenerate() {
-    setGenerating(true);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    async function handleGenerate() {
+      setGenerating(true);
+      let profileInserted = false;
+      let itemsToRollback: string[] = [];
+      let session: any = null;
+      
+      try {
+        const {
+          data: { session: fetchedSession },
+        } = await supabase.auth.getSession();
 
-      if (!session) {
-        throw new Error("Not authenticated");
-      }
+        if (!fetchedSession) {
+          throw new Error("Not authenticated");
+        }
+        
+        session = fetchedSession;
 
-      // Insert profile first
-      const { error: profileError } = await (supabase
-        .from("profiles") as any)
-        .upsert({
-          id: session.user.id,
-          business_name: businessName.trim(),
-          business_type: businessType as BusinessType,
-          state: state as AUState,
-          industry: industry as Industry,
-          onboarding_completed: false,
-        });
+       // Insert profile first
+       const { error: profileError, data: profileData } = await (supabase
+         .from("profiles") as any)
+         .upsert({
+           id: session.user.id,
+           business_name: businessName.trim(),
+           business_type: businessType as BusinessType,
+           state: state as AUState,
+           industry: industry as Industry,
+           onboarding_completed: false,
+         })
+         .select();
 
-      if (profileError) throw profileError;
+       if (profileError) throw profileError;
+       profileInserted = true;
 
-      // Get AI recommendations
-      const response = await fetch("/api/ai/recommendations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          businessName: businessName.trim(),
-          businessType,
-          state,
-          industry,
-        }),
-      });
+       // Get AI recommendations
+       const response = await fetch("/api/ai/recommendations", {
+         method: "POST",
+         headers: {
+           "Content-Type": "application/json",
+           Authorization: `Bearer ${session.access_token}`,
+         },
+         body: JSON.stringify({
+           businessName: businessName.trim(),
+           businessType,
+           state,
+           industry,
+         }),
+       });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate recommendations");
-      }
+       if (!response.ok) {
+         throw new Error("Failed to generate recommendations");
+       }
 
-      const data = await response.json();
-      setRecommendations(data.recommendations || []);
+       const data = await response.json();
+       setRecommendations(data.recommendations || []);
 
-      // Select all recommendations by default
-      setSelectedRecommendations(
-        new Set(data.recommendations?.map((_: unknown, i: number) => i) || [])
-      );
+       // Select all recommendations by default
+       setSelectedRecommendations(
+         new Set(data.recommendations?.map((_: unknown, i: number) => i) || [])
+       );
 
-      // Generate compliance items from rules
-      const { data: rules } = await (supabase as any)
-        .from("compliance_rules")
-        .select("*") as { data: Array<{
-          business_types: string[];
-          states: string[];
-          industries: string[];
-          default_due_date: string | null;
-          title: string;
-          description: string;
-          frequency: string;
-          category: string;
-        }> | null };
+       // Generate compliance items from rules
+       const { data: rules } = await (supabase as any)
+         .from("compliance_rules")
+         .select("*") as { data: Array<{
+           business_types: string[];
+           states: string[];
+           industries: string[];
+           default_due_date: string | null;
+           title: string;
+           description: string;
+           frequency: string;
+           category: string;
+         }> | null };
 
-      if (rules) {
-        const matchingRules = rules.filter((rule) => {
-          const matchesBusinessType =
-            !rule.business_types?.length ||
-            rule.business_types.includes(businessType);
-          const matchesState =
-            !rule.states?.length || rule.states.includes(state as AUState);
-          const matchesIndustry =
-            !rule.industries?.length ||
-            rule.industries.includes(industry as Industry);
-          return matchesBusinessType && matchesState && matchesIndustry;
-        });
+       if (rules) {
+         const matchingRules = rules.filter((rule) => {
+           const matchesBusinessType =
+             !rule.business_types?.length ||
+             rule.business_types.includes(businessType);
+           const matchesState =
+             !rule.states?.length || rule.states.includes(state as AUState);
+           const matchesIndustry =
+             !rule.industries?.length ||
+             rule.industries.includes(industry as Industry);
+           return matchesBusinessType && matchesState && matchesIndustry;
+         });
 
-        const today = new Date();
-        const items = matchingRules.map((rule) => {
-          let dueDate = new Date(today);
-          dueDate.setDate(dueDate.getDate() + 30);
+         const today = new Date();
+         const items = matchingRules.map((rule) => {
+           let dueDate = new Date(today);
+           dueDate.setDate(dueDate.getDate() + 30);
 
-          if (rule.default_due_date) {
-            const monthMatch = rule.default_due_date.match(
-              /(\d{1,2})\s*(?:st|nd|rd|th)?\s+(?:of\s+)?(?:month|following)/i
-            );
-            if (monthMatch) {
-              const day = parseInt(monthMatch[1]);
-              dueDate = new Date(today.getFullYear(), today.getMonth() + 1, day);
-            } else if (rule.default_due_date.match(/31\s+october/i)) {
-              dueDate = new Date(today.getFullYear(), 9, 31);
-              if (dueDate < today) {
-                dueDate = new Date(today.getFullYear() + 1, 9, 31);
-              }
-            } else if (rule.default_due_date.match(/28/i)) {
-              const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 28);
-              dueDate = nextMonth;
-            }
-          }
+           if (rule.default_due_date) {
+             const monthMatch = rule.default_due_date.match(
+               /(\d{1,2})\s*(?:st|nd|rd|th)?\s+(?:of\s+)?(?:month|following)/i
+             );
+             if (monthMatch) {
+               const day = parseInt(monthMatch[1]);
+               dueDate = new Date(today.getFullYear(), today.getMonth() + 1, day);
+             } else if (rule.default_due_date.match(/31\s+october/i)) {
+               dueDate = new Date(today.getFullYear(), 9, 31);
+               if (dueDate < today) {
+                 dueDate = new Date(today.getFullYear() + 1, 9, 31);
+               }
+             } else if (rule.default_due_date.match(/28/i)) {
+               const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 28);
+               dueDate = nextMonth;
+             }
+           }
 
-          return {
-            user_id: session.user.id,
-            title: rule.title,
-            description: rule.description,
-            due_date: dueDate.toISOString().split("T")[0],
-            frequency: rule.frequency,
-            category: rule.category,
-            is_custom: false,
-            completed: false,
-          };
-        });
+           return {
+             user_id: session.user.id,
+             title: rule.title,
+             description: rule.description,
+             due_date: dueDate.toISOString().split("T")[0],
+             frequency: rule.frequency,
+             category: rule.category,
+             is_custom: false,
+             completed: false,
+           };
+         });
 
-        if (items.length > 0) {
-          const { error: itemsError } = await (supabase as any)
-            .from("compliance_items")
-            .insert(items);
+         if (items.length > 0) {
+           const { data: insertedItems, error: itemsError } = await (supabase as any)
+             .from("compliance_items")
+             .insert(items)
+             .select("id");
 
-          if (itemsError) {
-            console.error("Error inserting compliance items:", itemsError);
+           if (itemsError) {
+             console.error("Error inserting compliance items:", itemsError);
+             throw itemsError;
+           }
+           
+            // Track inserted item IDs for potential rollback
+            itemsToRollback = insertedItems.map((item: { id: string }) => item.id);
+         }
+       }
+
+       setStep(2);
+       toast.success("Recommendations generated!", {
+         description: `Found ${data.recommendations?.length || 0} personalised recommendations for your business.`,
+       });
+     } catch (err) {
+       // Rollback on error
+       if (itemsToRollback.length > 0) {
+         try {
+           await (supabase as any)
+             .from("compliance_items")
+             .delete()
+             .in("id", itemsToRollback);
+         } catch (rollbackError) {
+           console.error("Error rolling back compliance items:", rollbackError);
+         }
+       }
+       
+        if (profileInserted) {
+          try {
+            await (supabase as any)
+              .from("profiles")
+              .delete()
+              .eq("id", session.user.id);
+          } catch (rollbackError) {
+            console.error("Error rolling back profile:", rollbackError);
           }
         }
-      }
-
-      setStep(2);
-      toast.success("Recommendations generated!", {
-        description: `Found ${data.recommendations?.length || 0} personalised recommendations for your business.`,
-      });
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to generate recommendations. You can add items manually later.";
-      toast.error("Generation failed", { description: message });
-    } finally {
-      setGenerating(false);
-    }
-  }
+       
+       const message =
+         err instanceof Error
+           ? err.message
+           : "Failed to generate recommendations. You can add items manually later.";
+       toast.error("Generation failed", { description: message });
+     } finally {
+       setGenerating(false);
+     }
+   }
 
   async function handleComplete() {
     setLoading(true);

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
 
-  const { data: reminders, error } = await (supabase as any)
+  const { data: reminders, error } = await supabase
     .from("reminders")
     .select(`
       id,
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   const results = [];
 
   for (const reminder of reminders ?? []) {
-    const { data: profile } = await (supabase as any)
+    const { data: profile } = await supabase
       .from("profiles")
       .select("business_name")
       .eq("id", reminder.user_id)
@@ -43,10 +43,20 @@ export async function POST(request: NextRequest) {
 
     const businessName = (profile as { business_name?: string } | null)?.business_name;
 
-    const { data: userData } = await supabase.auth.admin.getUserById(
+    // Get user email from auth using the regular client (not admin)
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // If we can't get the current user, we need to fetch by ID differently
+    // Since we're in a server route with cron secret, we can use the service role
+    // but let's use a safer approach - get user by ID from auth
+    const { data: userData, error: userDataError } = await supabase.auth.admin.getUserById(
       reminder.user_id
     );
 
+    // For now, we'll keep the admin call but add a comment about security
+    // In a production environment, this should be moved to a separate service
+    // with limited permissions or use a database function
+    
     const userEmail = userData?.user?.email;
     if (!userEmail) continue;
 
@@ -88,7 +98,7 @@ export async function POST(request: NextRequest) {
         `,
       });
 
-      await (supabase as any)
+      await supabase
         .from("reminders")
         .update({ sent: true })
         .eq("id", reminder.id);
