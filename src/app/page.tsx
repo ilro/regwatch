@@ -5,9 +5,11 @@ import { Footer } from "@/components/landing/footer";
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
-      <Hero />
-      <Features />
-      <Footer />
+      <main id="main-content">
+        <Hero />
+        <Features />
+        <Footer />
+      </main>
     </div>
   );
 }

@@ -34,15 +34,15 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const displayName = user.name ?? user.email ?? "User";
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-background">
+    <aside className="flex h-screen w-64 flex-col border-r bg-background" aria-label="Main navigation">
       <div className="flex h-14 items-center gap-2.5 px-5">
         <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-          <Shield className="size-4 text-primary-foreground" />
+          <Shield className="size-4 text-primary-foreground" aria-hidden="true" />
         </div>
-        <span className="text-lg font-semibold tracking-tight">RegWatch</span>
+        <span className="text-lg font-semibold tracking-tight" aria-hidden="true">RegWatch</span>
       </div>
 
-      <Separator />
+      <Separator aria-hidden="true" />
 
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navItems.map((item) => {
@@ -60,19 +60,20 @@ export function AppSidebar({ user }: AppSidebarProps) {
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
+              aria-current={isActive ? "page" : undefined}
             >
-              <item.icon className="size-4" />
-              {item.label}
+              <item.icon className="size-4" aria-hidden="true" />
+              <span className="ml-2">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <Separator />
+      <Separator aria-hidden="true" />
 
       <div className="flex items-center gap-3 px-4 py-3.5">
         <Avatar size="sm">
-          <AvatarFallback className="text-xs font-medium">
+          <AvatarFallback className="text-xs font-medium" aria-label={`${displayName}'s avatar`}>
             {initials}
           </AvatarFallback>
         </Avatar>

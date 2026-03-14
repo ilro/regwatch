@@ -41,10 +41,10 @@ const features = [
 
 export function Features() {
   return (
-    <section className="py-20 md:py-24">
+    <section className="py-20 md:py-24" aria-labelledby="features-heading">
       <div className="container mx-auto px-4">
         <div className="mx-auto mb-16 max-w-2xl text-center">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+          <h2 id="features-heading" className="mb-4 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
             Everything you need to stay compliant
           </h2>
           <p className="text-lg text-slate-600">
@@ -53,15 +53,17 @@ export function Features() {
           </p>
         </div>
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
+          {features.map((feature, index) => (
             <div
               key={feature.title}
               className="group rounded-xl border border-slate-200 bg-white p-6 transition-all hover:border-blue-200 hover:shadow-lg"
+              role="region"
+              aria-labelledby={`feature-${index}-title`}
             >
               <div className="mb-4 inline-flex rounded-lg bg-blue-50 p-3 text-blue-600 transition-colors group-hover:bg-blue-100">
-                <feature.icon className="h-5 w-5" />
+                <feature.icon className="h-5 w-5" aria-hidden="true" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-slate-900">
+              <h3 id={`feature-${index}-title`} className="mb-2 text-lg font-semibold text-slate-900">
                 {feature.title}
               </h3>
               <p className="text-sm leading-relaxed text-slate-600">

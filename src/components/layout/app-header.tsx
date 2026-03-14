@@ -47,29 +47,29 @@ export function AppHeader({ title, user }: AppHeaderProps) {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant="ghost" className="gap-2 px-2" />
+            <Button variant="ghost" className="gap-2 px-2" aria-label="User menu" />
           }
         >
           <Avatar size="sm">
-            <AvatarFallback className="text-xs font-medium">
+            <AvatarFallback className="text-xs font-medium" aria-label={`${user.name ?? user.email}'s avatar`}>
               {initials}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden text-sm font-medium sm:inline-block">
+          <span className="hidden text-sm font-medium sm:inline-block" aria-hidden="true">
             {user.name ?? user.email}
           </span>
-          <ChevronDown className="size-4 text-muted-foreground" />
+          <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
             onClick={() => router.push("/dashboard/settings")}
           >
-            <User className="size-4" />
+            <User className="size-4" aria-hidden="true" />
             Profile
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
-            <LogOut className="size-4" />
+            <LogOut className="size-4" aria-hidden="true" />
             Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>

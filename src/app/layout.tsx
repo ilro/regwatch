@@ -32,6 +32,10 @@ export default function RootLayout({
   return (
     <html lang="en-AU" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
+        {/* Skip navigation link for screen reader and keyboard users */}
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
         <TooltipProvider delay={300}>
           {children}
           <Toaster richColors position="top-right" />
