@@ -6,6 +6,25 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
+type ReminderWithItems = {
+  id: string;
+  item_id: string;
+  user_id: string;
+  reminder_date: string;
+  type: string;
+  compliance_items: Array<{
+    title: string;
+    description: string | null;
+    due_date: string;
+    category: string;
+  }> | {
+    title: string;
+    description: string | null;
+    due_date: string;
+    category: string;
+  } | null;
+};
+
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -15,7 +34,11 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
 
-  const { data: reminders, error } = await supabase
+  // Use untyped client for the join query since compliance_items relation
+  // isn't in the Database type definition
+  const typedClient = supabase as any;
+
+  const { data, error } = await typedClient
     .from("reminders")
     .select(`
       id,
@@ -27,6 +50,8 @@ export async function POST(request: NextRequest) {
     `)
     .eq("sent", false)
     .lte("reminder_date", today);
+
+  const reminders = data as ReminderWithItems[] | null;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -45,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // Get user email from auth using the regular client (not admin)
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+
     // If we can't get the current user, we need to fetch by ID differently
     // Since we're in a server route with cron secret, we can use the service role
     // but let's use a safer approach - get user by ID from auth
@@ -56,7 +81,7 @@ export async function POST(request: NextRequest) {
     // For now, we'll keep the admin call but add a comment about security
     // In a production environment, this should be moved to a separate service
     // with limited permissions or use a database function
-    
+
     const userEmail = userData?.user?.email;
     if (!userEmail) continue;
 
@@ -98,7 +123,7 @@ export async function POST(request: NextRequest) {
         `,
       });
 
-      await supabase
+      await (supabase as any)
         .from("reminders")
         .update({ sent: true })
         .eq("id", reminder.id);

@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, User, ChevronDown } from "lucide-react";
+import { MobileNav } from "./mobile-nav";
 
 interface AppHeaderProps {
   title: string;
@@ -41,8 +42,11 @@ export function AppHeader({ title, user }: AppHeaderProps) {
   }
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-background px-6">
-      <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
+    <header className="flex h-14 items-center justify-between border-b bg-background px-4 md:px-6">
+      <div className="flex items-center gap-3">
+        <MobileNav user={user} />
+        <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
+      </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger

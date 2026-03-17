@@ -6,7 +6,12 @@ const nextConfig: NextConfig = {
   
   // Optimize images
   images: {
-    domains: ['res.cloudinary.com'], // Add any external image domains you use
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+    ],
   },
   
   // Configure headers for security and caching

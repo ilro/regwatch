@@ -34,7 +34,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const displayName = user.name ?? user.email ?? "User";
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-background" aria-label="Main navigation">
+    <aside className="hidden h-screen w-64 flex-col border-r bg-background md:flex" aria-label="Main navigation">
       <div className="flex h-14 items-center gap-2.5 px-5">
         <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
           <Shield className="size-4 text-primary-foreground" aria-hidden="true" />
